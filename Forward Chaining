@@ -1,0 +1,138 @@
+import re
+
+
+
+def parse_predicate(pred_str):
+    """Convert 'Man(John)' -> ('Man', ('John',))"""
+    match = re.match(r'(\w+)\((.*)\)', pred_str.strip())
+    if not match:
+        return (pred_str.strip(), ())
+    pred = match.group(1)
+    args = tuple(arg.strip() for arg in match.group(2).split(','))
+    return (pred, args)
+
+def is_variable(x):
+    return x.islower()  # lowercase variable names
+
+def unify(x, y, subst=None):
+    """Unification function"""
+    if subst is None:
+        subst = {}
+    if x == y:
+        return subst
+    if isinstance(x, str) and is_variable(x):
+        return unify_var(x, y, subst)
+    if isinstance(y, str) and is_variable(y):
+        return unify_var(y, x, subst)
+    if isinstance(x, tuple) and isinstance(y, tuple):
+        if x[0] != y[0] or len(x[1]) != len(y[1]):
+            return None
+        for a, b in zip(x[1], y[1]):
+            subst = unify(a, b, subst)
+            if subst is None:
+                return None
+        return subst
+    return None
+
+def unify_var(var, x, subst):
+    if var in subst:
+        return unify(subst[var], x, subst)
+    elif x in subst:
+        return unify(var, subst[x], subst)
+    elif occurs_check(var, x, subst):
+        return None
+    else:
+        subst[var] = x
+        return subst
+
+def occurs_check(var, x, subst):
+    if var == x:
+        return True
+    if isinstance(x, tuple):
+        return any(occurs_check(var, arg, subst) for arg in x[1])
+    if x in subst:
+        return occurs_check(var, subst[x], subst)
+    return False
+
+def substitute(expr, subst):
+    """Apply substitution"""
+    if isinstance(expr, str):
+        return subst.get(expr, expr)
+    elif isinstance(expr, tuple):
+        functor, args = expr
+        return (functor, tuple(substitute(a, subst) for a in args))
+    return expr
+
+# ---------- Forward Chaining Core ----------
+
+def find_substitutions(premises, facts):
+    if not premises:
+        return [dict()]
+    first, rest = premises[0], premises[1:]
+    subs_list = []
+    for fact in facts:
+        theta = unify(first, fact)
+        if theta is not None:
+            for rest_theta in find_substitutions(
+                [substitute(r, theta) for r in rest], facts
+            ):
+                merged = {**theta, **rest_theta}
+                subs_list.append(merged)
+    return subs_list
+
+def FOL_FC_ASK(KB, query):
+    new = set()
+    while True:
+        new_inferred = set()
+        for (premises, conclusion) in KB["rules"]:
+            for theta in find_substitutions(premises, KB["facts"]):
+                q = substitute(conclusion, theta)
+                if q not in KB["facts"] and q not in new:
+                    print(f"Inferred: {q}")
+                    if unify(q, query):
+                        return True
+                    new_inferred.add(q)
+        if not new_inferred:
+            return False
+        KB["facts"].update(new_inferred)
+        new = new_inferred
+
+# ---------- Main Program (User Input) ----------
+
+def main():
+    KB = {"facts": set(), "rules": []}
+
+    print("=== FORWARD REASONING (FORWARD CHAINING) ===\n")
+
+    # Enter facts
+    n = int(input("Enter number of facts: "))
+    for i in range(n):
+        fact_str = input(f"Fact {i+1}: ")
+        KB["facts"].add(parse_predicate(fact_str))
+
+    # Enter rules
+    m = int(input("\nEnter number of rules: "))
+    for i in range(m):
+        rule_str = input(f"Rule {i+1} (format: A(x),B(x)->C(x)): ")
+        lhs, rhs = rule_str.split("->")
+        premises = [parse_predicate(p.strip()) for p in lhs.split(",")]
+        conclusion = parse_predicate(rhs.strip())
+        KB["rules"].append((premises, conclusion))
+
+    # Enter query
+    query_str = input("\nEnter query: ")
+    query = parse_predicate(query_str)
+
+    # Run forward chaining
+    print("\n--- FORWARD CHAINING PROCESS ---")
+    result = FOL_FC_ASK(KB, query)
+
+    print("\n--- RESULT ---")
+    if result:
+        print(f"The query {query_str} CAN be inferred from the KB ")
+    else:
+        print(f"The query {query_str} CANNOT be inferred from the KB ")
+
+# Run the program
+if __name__ == "__main__":
+    main()
