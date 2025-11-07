@@ -1,0 +1,83 @@
+import re
+import itertools
+
+
+def negate(literal):
+    """Negate a literal"""
+    if literal.startswith('~'):
+        return literal[1:]
+    else:
+        return '~' + literal
+
+def parse_clause(clause_str):
+    """Convert 'A v B' -> set(['A', 'B'])"""
+    return set(lit.strip() for lit in clause_str.split('v'))
+
+def resolve(ci, cj):
+    """Resolve two clauses and return resolvents"""
+    resolvents = []
+    for di in ci:
+        for dj in cj:
+            if di == negate(dj):
+                new_clause = (ci - {di}) | (cj - {dj})
+                resolvents.append(new_clause)
+    return resolvents
+
+
+
+def resolution_algorithm(clauses, query):
+    """Perform resolution to check if query follows from KB"""
+    clauses = [parse_clause(c) for c in clauses]
+    clauses.append(parse_clause(negate(query)))  # Add negated query
+    new = set()
+
+    print("\n--- Resolution Process ---")
+    while True:
+        n = len(clauses)
+        pairs = [(clauses[i], clauses[j]) for i in range(n) for j in range(i + 1, n)]
+
+        for (ci, cj) in pairs:
+            resolvents = resolve(ci, cj)
+            for res in resolvents:
+                print(f"Resolving {ci} and {cj} => {res}")
+                if not res:  # Empty clause found
+                    print("\n❗ Empty clause found — contradiction achieved.")
+                    return True
+                new.add(frozenset(res))
+
+        if new.issubset(set(map(frozenset, clauses))):
+            print("\nNo new clauses — no contradiction found.")
+            return False
+        for c in new:
+            if c not in clauses:
+                clauses.append(set(c))
+
+
+def main():
+    print("=== RESOLUTION IN FIRST-ORDER LOGIC (Simplified CNF) ===\n")
+
+    n = int(input("Enter number of premises: "))
+    premises = []
+    for i in range(n):
+        premise = input(f"Enter premise {i+1} (use v for OR, ~ for NOT): ")
+        premises.append(premise)
+
+    query = input("\nEnter conclusion to prove: ")
+
+    print("\n--- Knowledge Base (CNF Form) ---")
+    for p in premises:
+        print(p)
+    print("Negated conclusion added:", negate(query))
+
+    result = resolution_algorithm(premises, query)
+
+    print("\n--- RESULT ---")
+    if result:
+        print(f"The conclusion '{query}' logically follows from the premises ✅")
+    else:
+        print(f"The conclusion '{query}' does NOT follow from the premises ❌")
+
+
+# Run program
+if __name__ == "__main__":
+    main()
