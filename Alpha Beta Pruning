@@ -1,0 +1,81 @@
+INF = float('inf')
+
+# Game tree represented as a dictionary:
+# Each non-leaf node maps to a list of children.
+# Each leaf node stores its numeric value.
+tree = {
+    "A": ["B", "C"],
+    "B": ["D", "E"],
+    "C": ["F", "G"],
+    "D": ["H", "I", "J"],
+    "E": ["K", "L"],
+    "F": ["M", "N"],
+    "G": ["O", "P", "Q", "R"],
+    
+    # Leaves
+    "H": 41, "I": 5, "J": 12,
+    "K": 101, "L": 80,
+    "M": 34, "N": 86,
+    "O": 50, "P": 36, "Q": 25, "R": 3
+}
+
+pruned = []      # Stores pruned nodes
+path_taken = []  # Best path found
+
+
+def is_leaf(node):
+    return isinstance(tree[node], int)
+
+
+def max_value(node, alpha, beta, path):
+    if is_leaf(node):
+        return tree[node], [node]
+
+    v = -INF
+    best_local_path = []
+
+    for child in tree[node]:
+        val, child_path = min_value(child, alpha, beta, path + [node])
+        if val > v:
+            v = val
+            best_local_path = [node] + child_path
+
+        alpha = max(alpha, v)
+
+        if v >= beta:
+            pruned.append(f"Pruned at MAX node {node}: remaining children skipped")
+            break
+
+    return v, best_local_path
+
+
+def min_value(node, alpha, beta, path):
+    if is_leaf(node):
+        return tree[node], [node]
+
+    v = INF
+    best_local_path = []
+
+    for child in tree[node]:
+        val, child_path = max_value(child, alpha, beta, path + [node])
+        if val < v:
+            v = val
+            best_local_path = [node] + child_path
+
+        beta = min(beta, v)
+
+        if v <= alpha:
+            pruned.append(f"Pruned at MIN node {node}: remaining children skipped")
+            break
+
+    return v, best_local_path
+
+
+# Run alpha-beta search from root A
+value, path_taken = max_value("A", -INF, INF, [])
+
+print("FINAL ROOT VALUE =", value)
+print("BEST PATH =", " → ".join(path_taken))
+print("\nPRUNED BRANCHES:")
+for p in pruned:
+    print(p)
