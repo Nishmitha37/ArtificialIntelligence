@@ -1,0 +1,25 @@
+from sympy import symbols
+from sympy.logic.boolalg import to_cnf
+from sympy.parsing.sympy_parser import parse_expr
+
+print("Enter propositional logic formula:")
+print("Use operators:")
+print(" & for AND\n | for OR\n ~ for NOT\n >> for IMPLIES\n << for REVERSE IMPLIES\n ^ for XOR\n")
+
+# Example input:  (A >> B) & (~C | D)
+
+expr_input = input("Formula: ")
+
+# Create symbols automatically
+# Extract all uppercase letters as propositional variables
+vars = sorted(set(ch for ch in expr_input if ch.isalpha()))
+symbols_dict = {v: symbols(v) for v in vars}
+
+# Parse the expression
+expr = parse_expr(expr_input, local_dict=symbols_dict)
+
+# Convert to CNF
+cnf_expr = to_cnf(expr, simplify=True)
+
+print("\nCNF Form:")
+print(cnf_expr)
